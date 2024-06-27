@@ -4,8 +4,9 @@ var Engine = Matter.Engine,
     Render = Matter.Render,
     Runner = Matter.Runner,
     Bodies = Matter.Bodies,
-    Wolrd = Matter.World,
-    Body = Matter.Body;
+    World = Matter.World,
+    Body = Matter.Body,
+    Events = Matter.Events;
 
 // 엔진 선언
 const engine = Engine.create();
@@ -46,14 +47,14 @@ const topLine = Bodies.rectangle(310, 150, 620, 2, {
 })
 
 // 벽 배치
-Wolrd.add(world, [leftWall, rightWall, gorund, topLine]);
+World.add(world, [leftWall, rightWall, gorund, topLine]);
 
 Render.run(render);
 Runner.run(engine);
 
 // 현재 과일 값을 저장할 변수 생성
 let currentBody = null;
-let curentFruit = null;
+let currentFruit = null;
 // 키 조작을 제어하는 변수 생성
 let disableAction =  false;
 
@@ -75,9 +76,9 @@ function addFruit() {
     });
     // 현재 과일값 저장
     currentBody = body;
-    curentFruit = fruit;
+    currentFruit = fruit;
 
-    Wolrd.add(world, body);
+    World.add(world, body);
 }
 
 window.onkeydown = (event) => {
@@ -87,6 +88,7 @@ window.onkeydown = (event) => {
 
     switch(event.code) {
         case "KeyA" :
+            if (currentBody.position - currentFruit.radius)
             Body.setPosition(currentBody, {
                 x: currentBody.position.x - 10,
                 y: currentBody.position.y
@@ -108,5 +110,39 @@ window.onkeydown = (event) => {
             break;
     }
 }
+
+Events.on(engine, "collisionStart", (event) => {
+    event.pairs.forEach((collision) => {
+        if (collision.bodyA.index == collision.bodyB.index) {
+            const index = collision.bodyA.index;
+
+            if (index == FRUITS - 1)
+                return;
+
+            // 충돌이 일어나는 같은 과일 제거
+            World.remove(world, [collision.bodyA, collision.bodyB]);
+
+            // 기존 과일에서 1증가 시킨 값을 저장
+            const newFruit = FRUITS[index + 1];
+            const newBody = Bodies.circle(
+                // 부딪친 위치의 x,y값
+                collision.collision.supports[0].x,
+                collision.collision.supports[0].y,
+                newFruit.radius,
+                {
+                    // 과일 index 저장
+                    index : index + 1,
+                    // 새로운 과일 렌더링
+                    render : { sprite : { texture : `${newFruit.name}.png` } },
+                }
+            )
+            World.add(world, newBody);
+        }
+        if (!disableAction && (collision.bodyA.name === "topLine" || collision.bodyB.name === "topLine")) {
+            alert("Game Over");
+            disableAction = true;
+        }
+    });
+});
 
 addFruit();
